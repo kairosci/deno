@@ -804,6 +804,8 @@ fn upgrade_from_pr(
     Cow::Borrowed(&current_exe_path)
   };
 
+  ensure_not_dpkg_managed(&current_exe_path, &output_exe_path)?;
+
   #[cfg(windows)]
   kill_running_deno_lsp_processes();
 
@@ -962,6 +964,8 @@ fn upgrade_from_branch(
     Cow::Borrowed(&current_exe_path)
   };
 
+  ensure_not_dpkg_managed(&current_exe_path, &output_exe_path)?;
+
   #[cfg(windows)]
   kill_running_deno_lsp_processes();
 
@@ -1005,6 +1009,8 @@ pub async fn upgrade(
     .map(|output| cli_options.initial_cwd().join(output));
   let output_exe_path =
     full_path_output_flag.as_ref().unwrap_or(&current_exe_path);
+
+  ensure_not_dpkg_managed(&current_exe_path, output_exe_path)?;
 
   let permissions = set_exe_permissions(&current_exe_path, output_exe_path)?;
 
@@ -2035,6 +2041,48 @@ fn set_exe_permissions(
   Ok(permissions)
 }
 
+fn dpkg_query_owns_path(output: &str, path: &Path) -> bool {
+  output.lines().any(|line| {
+    line
+      .split_once(": ")
+      .is_some_and(|(_, owned_path)| Path::new(owned_path) == path)
+  })
+}
+
+fn ensure_not_dpkg_managed(
+  current_exe_path: &Path,
+  output_exe_path: &Path,
+) -> Result<(), AnyError> {
+  let output_is_current_exe = output_exe_path == current_exe_path
+    || output_exe_path
+      .canonicalize()
+      .is_ok_and(|path| path == current_exe_path);
+  if !output_is_current_exe {
+    return Ok(());
+  }
+
+  #[cfg(target_os = "linux")]
+  {
+    let output = Command::new("dpkg-query")
+      .arg("--search")
+      .arg(current_exe_path)
+      .output();
+    if let Ok(output) = output
+      && output.status.success()
+      && dpkg_query_owns_path(
+        &String::from_utf8_lossy(&output.stdout),
+        current_exe_path,
+      )
+    {
+      bail!(
+        "This Deno executable is managed by dpkg. Upgrade it with your system package manager (for example, `sudo apt upgrade deno`)."
+      );
+    }
+  }
+
+  Ok(())
+}
+
 fn check_exe(exe_path: &Path) -> Result<(), AnyError> {
   let output = Command::new(exe_path)
     .arg("-V")
@@ -2128,6 +2176,31 @@ mod test {
   use test_util::assert_contains;
 
   use super::*;
+
+  #[test]
+  fn test_dpkg_query_owns_executable() {
+    assert!(dpkg_query_owns_path(
+      "deno: /usr/bin/deno\n",
+      Path::new("/usr/bin/deno"),
+    ));
+    assert!(dpkg_query_owns_path(
+      "other-package: /usr/bin/other\ndeno: /usr/bin/deno\n",
+      Path::new("/usr/bin/deno"),
+    ));
+  }
+
+  #[test]
+  fn test_dpkg_query_does_not_own_other_path() {
+    assert!(!dpkg_query_owns_path(
+      "deno: /usr/bin/deno\n",
+      Path::new("/usr/local/bin/deno"),
+    ));
+    assert!(!dpkg_query_owns_path("", Path::new("/usr/bin/deno"),));
+    assert!(!dpkg_query_owns_path(
+      "not a package ownership result\n",
+      Path::new("/usr/bin/deno"),
+    ));
+  }
 
   #[test]
   fn test_get_pr_artifact_name() {
