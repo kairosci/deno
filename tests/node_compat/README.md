@@ -38,6 +38,10 @@ Each test entry can include the following optional configuration properties:
 - **`reason`** (string): Optional explanation for why a test is marked as
   skipped.
 
+- **`sequential`** (boolean): Runs the test in the serial phase even when its
+  suite category normally runs in parallel. Use this for tests that depend on
+  timing or process-wide resources affected by concurrent tests.
+
 - **`env`** (object): Per-test environment variables, layered on top of the
   runner's defaults. Use sparingly — only for tests where one Node fixture needs
   a config the rest of the suite must not have (e.g. a single test that needs
@@ -53,6 +57,9 @@ Each test entry can include the following optional configuration properties:
 
   // Test marked as flaky
   "parallel/test-bar.js": { "flaky": true },
+
+  // Test that needs to run without concurrent tests
+  "parallel/test-uses-global-resource.js": { "sequential": true },
 
   // Test skipped on all platforms with explanation
   "parallel/test-baz.js": {

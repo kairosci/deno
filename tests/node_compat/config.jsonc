@@ -2057,7 +2057,12 @@
     "parallel/test-http2-compat-serverrequest-settimeout.js": {},
     "parallel/test-http2-compat-serverrequest-trailers.js": {},
     "parallel/test-http2-compat-serverrequest.js": {},
-    "parallel/test-http2-compat-serverresponse-close.js": {},
+    // These HTTP/2 teardown tests intermittently fail on macOS when other
+    // compatibility tests run concurrently. Serial execution avoids timing
+    // interference while preserving coverage on every platform.
+    "parallel/test-http2-compat-serverresponse-close.js": {
+      "sequential": true
+    },
     "parallel/test-http2-compat-serverresponse-destroy.js": {},
     "parallel/test-http2-compat-serverresponse-drain.js": {},
     "parallel/test-http2-compat-serverresponse-end-after-statuses-without-body.js": {},
@@ -2167,7 +2172,9 @@
     "parallel/test-http2-perf_hooks.js": {},
     "parallel/test-http2-perform-server-handshake.js": {},
     "parallel/test-http2-ping.js": {},
-    "parallel/test-http2-ping-settings-heapdump.js": {},
+    "parallel/test-http2-ping-settings-heapdump.js": {
+      "sequential": true
+    },
     "parallel/test-http2-ping-unsolicited-ack.js": {},
     "parallel/test-http2-pipe.js": {},
     "parallel/test-http2-priority-cycle-.js": {},

@@ -68,6 +68,11 @@ struct ExpectedFailure {
 struct TestConfig {
   #[serde(default)]
   flaky: bool,
+  /// When `true`, run the test in the serial phase even if its suite category
+  /// normally runs in parallel. Use for tests whose correctness depends on
+  /// timing or process-wide resources that concurrent tests disturb.
+  #[serde(default)]
+  sequential: bool,
   /// When `true`, the test is skipped on all platforms. Requires `reason`.
   #[serde(default)]
   ignore: bool,
@@ -173,6 +178,10 @@ fn main() {
     SEQUENTIAL_TEST_DIRS
       .iter()
       .any(|dir| test.data.test_path.starts_with(dir))
+      || config
+        .tests
+        .get(&test.data.test_path)
+        .is_some_and(|test_config| test_config.sequential)
   });
 
   let parallelism = Parallelism::default();

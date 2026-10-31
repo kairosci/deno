@@ -54,6 +54,10 @@
           "type": "boolean",
           "description": "If true, the test is considered flaky and may be retried in CI."
         },
+        "sequential": {
+          "type": "boolean",
+          "description": "If true, run the test serially even when its suite category normally runs in parallel."
+        },
         "ignore": {
           "type": "boolean",
           "description": "If true, the test is skipped on all platforms. Must be used together with 'reason'."
